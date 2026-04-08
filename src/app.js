@@ -1,23 +1,25 @@
 import express from 'express';
+import { adminAuth, userAuth } from './middlewares/auth.js';
 
 const app = express();
-//This will handle GET requests to /user
-app.get('/user', (req, res, next) => {
-    res.send({ firstName: 'Navin', lastName: 'Kumar' });
+
+//handle auth middleware for all requests to /admin
+app.use('/admin', adminAuth);
+
+app.get('/admin/getAllData', (req, res) => {
+    res.send('All Data sent successfully');
 });
 
-//This will handle POST requests to /user
-app.post('/user', (req, res, next) => {
-    res.send('Data saved successfully');
-});
-
-app.delete('/user', (req, res) => {
+app.delete('/admin/deleteUser', (req, res) => {
     res.send('User deleted successfully');
 });
 
-//this will match all the HTTP method api calls to /test
-app.use('/test', (req, res, next) => {
-    res.send('Hello from the server!');
+app.post('/user/login', (req, res) => {
+    res.send('User logged in successfully');
+});
+
+app.get('/user', userAuth, (req, res) => {
+    res.send('User data sent successfully');
 });
 
 app.listen(3000, () => {
