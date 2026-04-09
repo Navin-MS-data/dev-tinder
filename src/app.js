@@ -4,28 +4,16 @@ import { User } from './models/user.js';
 
 const app = express();
 
+app.use(express.json());
+
 app.post('/signup', async (req, res) => {
     //creating a new instance of User model
-    const user = new User({
-        firstName: 'Sachin',
-        lastName: 'Tendulkar',
-        email: 'sachin@example.com',
-        password: 'sachin@0111',
-    });
+    const user = new User(req.body);
     try {
         await user.save();
         res.send('User added successfully');
     } catch (err) {
         res.status(400).send('Error adding user', err.message);
-    }
-});
-
-app.get('/users', async (req, res) => {
-    try {
-        const users = await User.find();
-        res.send(users);
-    } catch (err) {
-        res.status(400).send('Error getting all user', err.message);
     }
 });
 
