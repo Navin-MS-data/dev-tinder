@@ -40,6 +40,28 @@ app.get('/feed', async (req, res) => {
   }
 });
 
+//delete user API - DELETE /user - delete a user from the database
+app.delete('/user', async (req, res) => {
+  const userId = req.body.userId;
+  try {
+    const user = await User.findByIdAndDelete(userId);
+    res.send('User deleted successfully');
+  } catch (error) {
+    res.status(400).send('Error deleting user', error.message);
+  }
+});
+
+app.patch('/user', async (req, res) => {
+  const data = req.body;
+  const userId = req.body.userId;
+  try {
+    await User.findByIdAndUpdate(userId, data);
+    res.send('User updated successfully');
+  } catch (error) {
+    res.status(400).send('Error updating user', error.message);
+  }
+});
+
 connectDB()
   .then(() => {
     console.log('database connection established');
