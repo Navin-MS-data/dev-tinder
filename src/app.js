@@ -13,7 +13,7 @@ app.post('/signup', async (req, res) => {
     await user.save();
     res.send('User added successfully');
   } catch (err) {
-    res.status(400).send('Error adding user', err.message);
+    res.status(400).send(`Error adding user: ${err.message}`);
   }
 });
 
@@ -26,7 +26,7 @@ app.get('/user', async (req, res) => {
     }
     res.send(users);
   } catch (error) {
-    res.status(400).send('Error getting user', error.message);
+    res.status(400).send(`Error getting user: ${error.message}`);
   }
 });
 
@@ -36,7 +36,7 @@ app.get('/feed', async (req, res) => {
     const users = await User.find({});
     res.send(users);
   } catch (error) {
-    res.status(500).send('Error getting feed', error.message);
+    res.status(500).send(`Error getting feed: ${error.message}`);
   }
 });
 
@@ -47,18 +47,33 @@ app.delete('/user', async (req, res) => {
     const user = await User.findByIdAndDelete(userId);
     res.send('User deleted successfully');
   } catch (error) {
-    res.status(400).send('Error deleting user', error.message);
+    res.status(400).send(`Error deleting user: ${error.message}`);
   }
 });
 
-app.patch('/user', async (req, res) => {
+app.patch('/user/:userId', async (req, res) => {
   const data = req.body;
-  const userId = req.body.userId;
+  const userId = req.params?.userId;
+
   try {
-    await User.findByIdAndUpdate(userId, data);
+    const ALLOWED_UPDATES = ['photoUrl', 'about', 'gender', 'age', 'skills'];
+
+    const isUpdateAllowed = Object.keys(data).every((key) =>
+      ALLOWED_UPDATES.includes(key),
+    );
+    if (!isUpdateAllowed) {
+      throw new Error('update fields are not allowed');
+    }
+    if (data?.skills.length > 10) {
+      throw new Error('skills  cannot exceed 10');
+    }
+    await User.findByIdAndUpdate(userId, data, {
+      returnDocument: 'after',
+      runValidators: true,
+    });
     res.send('User updated successfully');
   } catch (error) {
-    res.status(400).send('Error updating user', error.message);
+    res.status(400).send(`Error updating user: ${error.message}`);
   }
 });
 
