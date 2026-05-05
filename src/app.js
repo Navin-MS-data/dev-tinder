@@ -1,89 +1,90 @@
+import bcrypt from 'bcrypt';
+import cookieParser from 'cookie-parser';
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import { connectDB } from './config/database.js';
 import { User } from './models/user.js';
+import { validateSignUpData } from './utils/validation.js';
+import { userAuth } from './middlewares/auth.js';
 
 const app = express();
 
 app.use(express.json());
+app.use(cookieParser());
 
 app.post('/signup', async (req, res) => {
-  //creating a new instance of User model
-  const user = new User(req.body);
-  try {
-    await user.save();
-    res.send('User added successfully');
-  } catch (err) {
-    res.status(400).send(`Error adding user: ${err.message}`);
-  }
-});
+    //validation of the data is required
+    validateSignUpData(req);
+    //encrypt the pasword
+    const { password, firstName, lastName, email } = req.body;
+    const passwordHash = await bcrypt.hash(password, 10);
+    console.log(passwordHash);
 
-app.get('/user', async (req, res) => {
-  const userEmail = req.body.email;
-  try {
-    const users = await User.findOne({ email: userEmail });
-    if (users.length === 0) {
-      res.status(404).send('User not found');
-    }
-    res.send(users);
-  } catch (error) {
-    res.status(400).send(`Error getting user: ${error.message}`);
-  }
-});
-
-//Feed API - GET /feed - get a list of users from the database
-app.get('/feed', async (req, res) => {
-  try {
-    const users = await User.find({});
-    res.send(users);
-  } catch (error) {
-    res.status(500).send(`Error getting feed: ${error.message}`);
-  }
-});
-
-//delete user API - DELETE /user - delete a user from the database
-app.delete('/user', async (req, res) => {
-  const userId = req.body.userId;
-  try {
-    const user = await User.findByIdAndDelete(userId);
-    res.send('User deleted successfully');
-  } catch (error) {
-    res.status(400).send(`Error deleting user: ${error.message}`);
-  }
-});
-
-app.patch('/user/:userId', async (req, res) => {
-  const data = req.body;
-  const userId = req.params?.userId;
-
-  try {
-    const ALLOWED_UPDATES = ['photoUrl', 'about', 'gender', 'age', 'skills'];
-
-    const isUpdateAllowed = Object.keys(data).every((key) =>
-      ALLOWED_UPDATES.includes(key),
-    );
-    if (!isUpdateAllowed) {
-      throw new Error('update fields are not allowed');
-    }
-    if (data?.skills.length > 10) {
-      throw new Error('skills  cannot exceed 10');
-    }
-    await User.findByIdAndUpdate(userId, data, {
-      returnDocument: 'after',
-      runValidators: true,
+    //creating a new instance of User model
+    const user = new User({
+        firstName,
+        lastName,
+        email,
+        password: passwordHash,
     });
-    res.send('User updated successfully');
-  } catch (error) {
-    res.status(400).send(`Error updating user: ${error.message}`);
-  }
+    try {
+        await user.save();
+        res.send('User added successfully');
+    } catch (err) {
+        res.status(400).send(`ERROR: ${err.message}`);
+    }
+});
+
+app.post('/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            throw new Error('Invalid credentials');
+        }
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (isPasswordValid) {
+            //create a JWT token
+            const token = await jwt.sign({ _id: user._id }, 'DEV@Tinder$790');
+            console.log(token);
+            //Add the token to the cookie and send the response back to the user
+            res.cookie('token', token);
+            res.send('Login successful');
+        } else {
+            throw new Error('Invalid credentials');
+        }
+    } catch (err) {
+        res.status(400).send('Error: ' + err.message);
+    }
+});
+
+app.get('/profile', userAuth, async (req, res) => {
+    try {
+        const user = req.user;
+
+        res.send(user);
+    } catch (error) {
+        res.status(400).send(`Error getting profile: ${error.message}`);
+    }
+});
+
+app.post('/sendConnectionRequest', userAuth, async (req, res) => {
+    const user = req.user;
+
+    console.log('Sending connection request');
+
+    res.send(user.firstName + ' sent the connection request');
 });
 
 connectDB()
-  .then(() => {
-    console.log('database connection established');
-    app.listen(3000, () => {
-      console.log('Server is running on PORT 3000');
+    .then(() => {
+        console.log('database connection established');
+        app.listen(3000, () => {
+            console.log('Server is running on PORT 3000');
+        });
+    })
+    .catch((err) => {
+        console.error('database connection failed');
     });
-  })
-  .catch((err) => {
-    console.error('database connection failed');
-  });
