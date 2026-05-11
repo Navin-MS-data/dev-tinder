@@ -12,6 +12,21 @@ export const validateSignUpData = (req) => {
     }
 };
 
-function addSum() {
-    return a + b;
-}
+export const validateEditProfileData = (req) => {
+    const allowedEditFields = [
+        'firstName',
+        'lastName',
+        'email',
+        'photoUrl',
+        'gender',
+        'age',
+        'about',
+        'skills',
+    ];
+
+    const isEditAllowed = Object.keys(req.body).every((field) =>
+        allowedEditFields.includes(field),
+    );
+
+    return isEditAllowed;
+};
